@@ -4,20 +4,27 @@ const supabase = require('../backend/supabaseClient'); // Correct path to the Su
 const app = express();
 app.use(express.json());
 
-// --- Create a new lecture and generate a QR code URL (UPDATED for Supabase) ---
+// --- Create a new lecture (UPDATED for Supabase) ---
 // THIS IS THE FIX: The route is now relative: '/lectures'
 app.post('/lectures', async (req, res) => {
-    const { name, subject, time, teacher_id } = req.body;
+    // We now receive subject, date, and time from the form
+    const { subject, date, time, teacher_id } = req.body;
+    
+    // We auto-generate the 'name' field as required by the database
+    const name = `${subject} - ${date}`; 
+
     try {
         const { data, error } = await supabase
             .from('lectures')
-            .insert({ name, subject, time, teacher_id })
+            // We now insert all the correct fields, including the new 'date' field
+            .insert({ name, subject, date, time, teacher_id }) 
             .select('id')
             .single();
 
         if (error) throw error;
         const newLectureId = data.id;
 
+        // This URL must be absolute, using the env variable
         const qrUrl = `${process.env.FRONTEND_URL}/attend?lectureId=${newLectureId}`;
         
         res.status(201).json({ 
@@ -105,6 +112,40 @@ app.get('/lectures/:lectureId/attendance', async (req, res) => {
         res.json(records);
     } catch (error) {
         console.error("Error fetching live attendance:", error);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// --- GET Day-Wise Report for a single lecture ---
+// THIS IS THE FIX: The route is now relative: '/lecture-report/:lectureId'
+app.get('/lecture-report/:lectureId', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('attendance')
+            .select(`
+                id,
+                timestamp,
+                users ( id, name, roll_number, enrollment_number )
+            `)
+            .eq('lecture_id', req.params.lectureId)
+            .eq('status', 'present')
+            .order('timestamp', { ascending: true });
+
+        if (error) throw error;
+
+        // Flatten the data to make it easier for the frontend
+        const reportData = data.map(record => ({
+            attendance_id: record.id,
+            timestamp: record.timestamp,
+            student_id: record.users ? record.users.id : 'N/A',
+            student_name: record.users ? record.users.name : 'Unknown',
+            roll_number: record.users ? record.users.roll_number : 'N/A',
+            enrollment_number: record.users ? record.users.enrollment_number : 'N/A'
+        }));
+        
+        res.json(reportData);
+    } catch (error) {
+        console.error("Error fetching lecture report:", error);
         res.status(500).json({ error: 'Server error' });
     }
 });

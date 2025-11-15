@@ -25,24 +25,28 @@ export const LandingPage = ({ setView }) => {
 
   return (
     <>
-      <div className="w-full text-gray-800">
+      {/* This container is a flex column to ensure the footer is pushed down */}
+      <div className="w-full text-gray-800 flex flex-col min-h-screen">
         <header className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center text-[#021024] z-10">
           <div className="flex items-center gap-3">
             <BookOpenIcon className="w-8 h-8"/>
             <h1 className="text-2xl font-bold">AttendanceHub</h1>
           </div>
+          {/* Nav is hidden on mobile, visible on medium screens and up */}
           <nav className="hidden md:flex items-center gap-8 text-lg">
             <button onClick={() => setShowFeaturesModal(true)} className="hover:underline font-semibold">Features</button>
             <button onClick={() => setShowAboutModal(true)} className="hover:underline font-semibold">About</button>
           </nav>
         </header>
         
-        <main className="flex flex-col items-center justify-center min-h-screen p-4">
+        {/* 'flex-grow' pushes the footer down, 'pt-24' adds space for the header */}
+        <main className="flex flex-col items-center justify-center flex-grow p-4 pt-24">
           <div className="text-center mb-12 text-[#021024]">
-            {/* UPDATED: Added responsive text sizes */}
+            {/* Responsive text sizes */}
             <h2 className="text-4xl md:text-5xl font-bold mb-4">Smart Attendance System</h2>
             <p className="text-lg md:text-xl text-[#052659]">Select your role to get started</p>
           </div>
+          {/* This grid stacks to 1 column on mobile and is 2 columns on desktop */}
           <div className="grid md:grid-cols-2 gap-8 w-full max-w-3xl">
             <RoleCard
               icon={<UserIcon className="w-12 h-12 mx-auto text-[#052659]"/>}
@@ -63,12 +67,13 @@ export const LandingPage = ({ setView }) => {
           </div>
         </main>
 
-        <footer className="absolute bottom-0 left-0 right-0 p-6 text-center text-[#052659]">
+        {/* This footer is no longer 'absolute' and will sit at the bottom */}
+        <footer className="w-full p-6 text-center text-[#052659]">
           <p>© 2025 Smart Attendance System. All rights reserved.</p>
         </footer>
       </div>
       
-      {/* UPDATED: Filled in the modal content */}
+      {/* Modal content is complete */}
       <Modal isOpen={showAboutModal} onClose={() => setShowAboutModal(false)} title="About AttendanceHub">
         <p className="text-slate-600">
             AttendanceHub is a modern solution for educational institutions to streamline and automate the attendance process. It uses scannable QR codes to verify student presence and stores all data securely in a central database. It provides real-time insights, automated reports on defaulters, and helps create a more efficient and accountable learning environment.
