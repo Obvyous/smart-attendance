@@ -6,7 +6,7 @@ import { TeacherDashboard, AttendanceReportsPage, CreateLecturePage } from './pa
 import { StudentDashboard, ScanQRCodePage, ViewSchedulePage } from './pages/StudentPages.jsx';
 
 // This API_URL logic is 100% correct for Vercel + Local testing
-const API_URL = import.meta.env.PROD ? 'smart-attendance-system-mp.vercel.app/api' : 'http://localhost:3001/api';
+const API_URL = import.meta.env.PROD ? 'https://smart-attendance-1-49fb.onrender.com/api' : 'http://localhost:3001/api';
 
 export default function App() {
     // --- STATE MANAGEMENT ---
