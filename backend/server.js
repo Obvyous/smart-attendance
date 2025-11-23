@@ -12,28 +12,21 @@ const app = express();
 // Render provides this PORT, or we use 3001 for local testing
 const PORT = process.env.PORT || 3001;
 
-// --- CORS Configuration (FIXED to allow multiple origins) ---
-const allowedOrigins = process.env.FRONTEND_URL ? process.env.FRONTEND_URL.split(',').map(url => url.trim()) : ['*'];
+// --- CORS Configuration (ROBUST FIX) ---
+// Gets a comma-separated list of origins, plus a fallback for local testing
+const ALLOWED_ORIGINS = process.env.FRONTEND_URL 
+    ? process.env.FRONTEND_URL.split(',').map(url => url.trim())
+    : ['http://localhost:3000', 'http://localhost:5173']; // Default local origins
 
 const corsOptions = {
-    // FIX: Checks if the requesting origin is in the allowed list
-    origin: (origin, callback) => {
-        // Allow requests with no origin (like mobile apps or curl)
-        if (!origin) return callback(null, true);
-        
-        // Allow if origin is in the explicitly defined list
-        if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-        
-        // Block all other origins
-        callback(new Error('Not allowed by CORS'), false);
-    },
+    // FIX: Uses the standard CORS package implementation for origin checking
+    origin: ALLOWED_ORIGINS,
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true 
 };
 
-app.use(cors(corsOptions)); // Use the custom CORS options
+app.use(cors(corsOptions)); // Use the robust CORS options
 app.use(express.json()); // Allow server to accept JSON data
 
 // --- Health Check / Base Route ---
