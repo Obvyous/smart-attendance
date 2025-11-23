@@ -1,6 +1,7 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors'); 
+// Ensure dotenv is imported if you are using a local .env file during development
+// require('dotenv').config(); 
 
 // Import all routers
 const authRoutes = require('./routes/auth');
@@ -12,20 +13,24 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // --- Middleware Setup ---
-app.use(cors()); // Allow requests from your Vercel frontend
+// Allow CORS requests from the Vercel frontend domain
+app.use(cors({
+    origin: process.env.FRONTEND_URL || '*', // Use the FRONTEND_URL environment variable for security
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 app.use(express.json()); // Allow server to accept JSON data
 
 // --- Health Check / Base Route ---
 app.get('/', (req, res) => {
-    res.send('Smart Attendance Backend is running ;D!');
+    res.send('Smart Attendance Backend is running!');
 });
 
-// --- API Router Setup (FIX) ---
-// By mounting all routers under a single prefix like '/api/v1',
-// the full URL becomes standardized (e.g., /api/v1/teacher/login, /api/v1/lectures).
-app.use('/api/v1', authRoutes);     // Handles /api/v1/register, /api/v1/teacher/login, etc.
-app.use('/api/v1', teacherRoutes);  // Handles /api/v1/lectures, /api/v1/reports, etc.
-app.use('/api/v1', studentRoutes);  // Handles /api/v1/mark-attendance, /api/v1/attendance/:id, etc.
+// --- API Router Setup (SYNCHRONIZED WITH FRONTEND) ---
+// Mounting all specific role routers under the /api/v1 prefix
+app.use('/api/v1/auth', authRoutes);     
+app.use('/api/v1/teacher', teacherRoutes);  
+app.use('/api/v1/student', studentRoutes);  
 
 // --- Server Startup ---
 app.listen(PORT, () => {
