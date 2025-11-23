@@ -1,271 +1,137 @@
-import React, { useState, useEffect } from 'react';
-import { Navbar } from './components/Navbar.jsx';
-import { LandingPage } from './pages/LandingPage.jsx';
-import { TeacherLoginPage, TeacherRegisterPage, StudentLoginPage, StudentRegisterPage } from './pages/AuthPages.jsx';
-import { TeacherDashboard, AttendanceReportsPage, CreateLecturePage } from './pages/TeacherPages.jsx';
-import { StudentDashboard, ScanQRCodePage, ViewSchedulePage } from './pages/StudentPages.jsx';
+import React, { useState } from 'react';
+// Imports are correctly using '../components/' to go up one directory
+import { InputField } from '../components/InputField.jsx'; 
+import { 
+    ArrowLeftIcon, 
+    UserIcon, 
+    MailIcon, 
+    LockIcon, 
+    GraduationCapIcon 
+} from '../components/Icons.jsx';
 
-// FIX 1: Set API_URL to the full, canonical base path: /api/v1
-const API_URL = import.meta.env.PROD 
-    ? 'https://smart-attendance-1-49fb.onrender.com/api/v1' 
-    : 'http://localhost:3001/api/v1';
+// Reusable component for the form container
+const AuthFormContainer = ({ children, title, subtitle, icon }) => (
+    // Responsive padding for aesthetics
+    <div className="w-full max-w-md bg-white/95 rounded-2xl shadow-2xl p-6 md:p-8 space-y-6">
+      <div className="text-center space-y-4">
+        <div className="inline-block bg-slate-100 p-3 rounded-full text-[#052659]">{icon}</div>
+        <h1 className="text-2xl font-bold text-[#021024]">{title}</h1>
+        {subtitle && <p className="text-slate-500">{subtitle}</p>}
+      </div>
+      {children}
+    </div>
+);
 
-export default function App() {
-    // --- STATE MANAGEMENT ---
-    const [user, setUser] = useState(null);
-    const [view, setView] = useState('landing');
-    const [lectures, setLectures] = useState([]);
-    const [activeLecture, setActiveLecture] = useState(null);
-    const [attendanceRecords, setAttendanceRecords] = useState([]);
-    const [registeredStudents, setRegisteredStudents] = useState([]); // Used for teacher reports
-    // UPDATED: Use sessionStorage to log out when browser closes
-    const [token, setToken] = useState(sessionStorage.getItem('token'));
-    const [isLoading, setIsLoading] = useState(true);
-    const [notificationPermission, setNotificationPermission] = useState(Notification.permission);
-    const [lectureNotification, setLectureNotification] = useState(null);
+// Reusable component for the page layout with a back button
+const AuthPageWrapper = ({ setView, children }) => (
+    <div className="w-full flex flex-col items-center justify-center min-h-screen p-4">
+        <header className="absolute top-0 left-0 p-6 text-[#021024]">
+            <button onClick={() => setView('landing')} className="flex items-center gap-2 text-lg hover:underline font-semibold">
+                <ArrowLeftIcon /> Back to Home
+            </button>
+        </header>
+        <main className="w-full flex justify-center py-12">{children}</main>
+    </div>
+);
 
-    // --- EFFECT HOOKS ---
-    useEffect(() => {
-        const initializeApp = async () => {
-            // UPDATED: Use sessionStorage
-            const storedToken = sessionStorage.getItem('token');
-            const storedUser = JSON.parse(sessionStorage.getItem('user'));
-            const urlParams = new URLSearchParams(window.location.search);
-            const lectureIdFromUrl = urlParams.get('lectureId');
+// --- TEACHER AUTHENTICATION ---
 
-            if (storedToken && storedUser) {
-                setUser(storedUser);
-                setToken(storedToken);
-                await fetchDataForUser(storedUser, storedToken, lectureIdFromUrl);
-            } else if (lectureIdFromUrl) {
-                // UPDATED: Use sessionStorage
-                sessionStorage.setItem('pendingLectureId', lectureIdFromUrl);
-                setView('studentLogin');
-                setIsLoading(false);
-            } else {
-                setIsLoading(false);
-            }
-        };
-        initializeApp();
-    // THIS IS THE FIX: The dependency array MUST be empty '[]'
-    // This ensures the app initializes only ONCE on page load.
-    }, []); 
-    
-    useEffect(() => {
-        if (user?.role === 'student' && notificationPermission === 'default') {
-            Notification.requestPermission().then(setNotificationPermission);
-        }
-    }, [user, notificationPermission]);
+export const TeacherLoginPage = ({ setView, onLogin }) => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
 
-    // --- DATA FETCHING LOGIC (COMPLETE) ---
-    const fetchDataForUser = async (userData, userToken, lectureIdFromUrl = null) => {
-        try {
-            let lectureData = [];
-            let attendanceData = [];
+    const handleLogin = (e) => {
+        e.preventDefault();
+        onLogin(email, password, 'teacher'); // Passes the role to App.jsx
+    };
 
-            if (userData.role === 'teacher') {
-                // FIX 2: Fetches relative to API_URL: /teacher/lectures/{id}
-                const lectureRes = await fetch(`${API_URL}/teacher/lectures/${userData.id}`, { headers: { 'Authorization': `Bearer ${userToken}` } });
-                if (!lectureRes.ok) throw new Error('Failed to fetch lectures');
-                lectureData = await lectureRes.json();
-                
-                // We must also fetch all students and attendance for reports
-                const studentsRes = await fetch(`${API_URL}/teacher/all-students`, { headers: { 'Authorization': `Bearer ${userToken}` } });
-                const allAttendanceRes = await fetch(`${API_URL}/teacher/all-attendance`, { headers: { 'Authorization': `Bearer ${userToken}` } });
+    return (
+        <AuthPageWrapper setView={setView}>
+            <AuthFormContainer icon={<UserIcon className="w-8 h-8" />} title="Teacher Login" subtitle="Sign in to your teacher account">
+                <form className="space-y-6" onSubmit={handleLogin}>
+                    <InputField label="Email" type="email" id="email" placeholder="Enter your email" icon={<MailIcon className="w-5 h-5"/>} value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <InputField label="Password" type="password" id="password" placeholder="Enter your password" icon={<LockIcon className="w-5 h-5"/>} value={password} onChange={(e) => setPassword(e.target.value)} />
+                    <button type="submit" className="w-full bg-[#052659] text-white font-bold py-3 px-4 rounded-lg hover:bg-[#021024] transition-colors">Sign In</button>
+                </form>
+                <p className="text-center text-slate-600 mt-6">Don't have an account? <a href="#" onClick={(e) => {e.preventDefault(); setView('teacherRegister')}} className="font-semibold text-[#052659] hover:underline">Sign up</a></p>
+            </AuthFormContainer>
+        </AuthPageWrapper>
+    );
+};
 
-                if (studentsRes.ok) setRegisteredStudents(await studentsRes.json());
-                if (allAttendanceRes.ok) setAttendanceRecords(await allAttendanceRes.json());
+export const TeacherRegisterPage = ({ setView, onRegister }) => {
+    const [formData, setFormData] = useState({ id: '', name: '', email: '', password: '', role: 'teacher' });
+    const handleChange = (e) => setFormData({...formData, [e.target.id]: e.target.value});
+    
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onRegister(formData);
+    };
 
-            } else { // Student role
-                // Fetch in parallel to prevent race conditions
-                const [lectureRes, attendanceRes] = await Promise.all([
-                    // FIX 2: Fetches relative to API_URL: /student/lectures
-                    fetch(`${API_URL}/student/lectures`, { headers: { 'Authorization': `Bearer ${userToken}` } }),
-                    fetch(`${API_URL}/student/attendance/${userData.id}`, { headers: { 'Authorization': `Bearer ${userToken}` } })
-                ]);
-                
-                if (!lectureRes.ok) throw new Error('Failed to fetch lectures');
-                lectureData = await lectureRes.json();
+    return (
+        <AuthPageWrapper setView={setView}>
+            <AuthFormContainer icon={<UserIcon className="w-8 h-8" />} title="Teacher Registration" subtitle="Create your account to get started">
+                <form className="space-y-4" onSubmit={handleSubmit}>
+                    <InputField id="name" label="Full Name" type="text" placeholder="Enter your full name" icon={<UserIcon className="w-5 h-5"/>} value={formData.name} onChange={handleChange} />
+                    <InputField id="email" label="Email" type="email" placeholder="Enter your email" icon={<MailIcon className="w-5 h-5"/>} value={formData.email} onChange={handleChange} />
+                    <InputField id="password" label="Password" type="password" placeholder="Create a password" icon={<LockIcon className="w-5 h-5"/>} value={formData.password} onChange={handleChange} />
+                    <InputField id="id" label="Employee ID" type="text" placeholder="e.g., mit1234" icon={<UserIcon className="w-5 h-5"/>} value={formData.id} onChange={handleChange} />
+                    <button type="submit" className="w-full bg-[#052659] text-white font-bold py-3 px-4 rounded-lg hover:bg-[#021024] transition-colors">Create Account</button>
+                </form>
+                <p className="text-center text-slate-600 mt-6">Already have an account? <a href="#" onClick={(e) => {e.preventDefault(); setView('teacherLogin')}} className="font-semibold text-[#052659] hover:underline">Sign in here</a></p>
+            </AuthFormContainer>
+        </AuthPageWrapper>
+    );
+};
 
-                if (attendanceRes.ok) {
-                    attendanceData = await attendanceRes.json();
-                }
-            }
-            
-            // Set state AFTER all data is fetched
-            setLectures(lectureData);
-            setAttendanceRecords(attendanceData);
+// --- STUDENT AUTHENTICATION ---
 
-            // Now, handle navigation
-            if (lectureIdFromUrl && userData.role === 'student') {
-                const lectureToAttend = lectureData.find(l => l.id === parseInt(lectureIdFromUrl));
-                if (lectureToAttend) {
-                    setLectureNotification(lectureToAttend);
-                    setView('studentHome');
-                } else {
-                    setView('studentHome');
-                }
-            } else {
-                setView(userData.role === 'teacher' ? 'teacherHome' : 'studentHome');
-            }
-        } catch (error) {
-            console.error("Error fetching data:", error);
-        }
-    };
-    
-    // --- NOTIFICATION & API HANDLERS ---
-    const showNotification = (lecture) => {
-        if (notificationPermission === 'granted' && lecture) {
-            new Notification(`Attendance Open: ${lecture.name}`, { body: `Tap to mark your presence.`, icon: '/vite.svg' }).onclick = () => {
-                handleAttendFromNotification(lecture);
-            };
-        }
-    };
+export const StudentLoginPage = ({ setView, onLogin }) => {
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
 
-    const handleLogin = async (email, password, role) => {
-        try {
-            // FIX 2: Correctly construct the full URL path: /auth/teacher/login
-            const res = await fetch(`${API_URL}/auth/${role}/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Login failed');
-            
-            // UPDATED: Use sessionStorage
-            sessionStorage.setItem('token', data.token);
-            sessionStorage.setItem('user', JSON.stringify(data.user));
-            setToken(data.token);
-            setUser(data.user);
-            
-            if (data.user.role === 'student' && !registeredStudents.find(s => s.id === data.user.id)) {
-                setRegisteredStudents(prev => [...prev, data.user]);
-            }
-            
-            // UPDATED: Use sessionStorage
-            const pendingLectureId = sessionStorage.getItem('pendingLectureId');
-            await fetchDataForUser(data.user, data.token, pendingLectureId);
-            if (pendingLectureId) sessionStorage.removeItem('pendingLectureId');
-        } catch (error) {
-            // FIX 3: Change alert() to console.error
-            console.error(`Login Failed: ${error.message}`);
-        }
-    };
+    const handleLogin = (e) => {
+        e.preventDefault();
+        onLogin(email, password, 'student'); // Passes the role to App.jsx
+    };
 
-    const handleRegister = async (formData) => {
-        try {
-            // FIX 2: Correctly construct the full URL path: /auth/register
-            const res = await fetch(`${API_URL}/auth/register`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Registration failed');
-            
-            if(formData.role === 'student') {
-                setRegisteredStudents(prev => [...prev, formData]);
-            }
+    return (
+        <AuthPageWrapper setView={setView}>
+            <AuthFormContainer icon={<GraduationCapIcon className="w-8 h-8" />} title="Student Login" subtitle="Sign in to your student account">
+                    <form className="space-y-6" onSubmit={handleLogin}>
+                        <InputField label="Email" type="email" id="email" placeholder="Enter your email" icon={<MailIcon className="w-5 h-5"/>} value={email} onChange={(e) => setEmail(e.target.value)} />
+                        <InputField label="Password" type="password" id="password" placeholder="Enter your password" icon={<LockIcon className="w-5 h-5"/>} value={password} onChange={(e) => setPassword(e.target.value)} />
+                        <button type="submit" className="w-full bg-[#052659] text-white font-bold py-3 px-4 rounded-lg hover:bg-[#021024] transition-colors">Sign In</button>
+                    </form>
+                    <p className="text-center text-slate-600 mt-6">Don't have an account? <a href="#" onClick={(e) => {e.preventDefault(); setView('studentRegister')}} className="font-semibold text-[#052659] hover:underline">Sign up</a></p>
+            </AuthFormContainer>
+        </AuthPageWrapper>
+    );
+};
 
-            // FIX 3: Change alert() to console.log
-            console.log('Registration successful! Please log in.');
-            setView(formData.role === 'teacher' ? 'teacherLogin' : 'studentLogin');
-        } catch (error) {
-            // FIX 3: Change alert() to console.error
-            console.error(`Registration Failed: ${error.message}`);
-        }
-    };
+export const StudentRegisterPage = ({ setView, onRegister }) => {
+    const [formData, setFormData] = useState({ id: '', name: '', email: '', password: '', role: 'student', roll_number: '', enrollment_number: '' });
+    const handleChange = (e) => setFormData({...formData, [e.target.id]: e.target.value});
+    
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onRegister(formData);
+    };
 
-    const handleLogout = () => {
-        // UPDATED: Use sessionStorage
-        sessionStorage.clear();
-        setUser(null); setToken(null); setView('landing');
-        setLectures([]); setActiveLecture(null); setAttendanceRecords([]);
-        window.history.pushState({}, '', window.location.pathname);
-    };
-
-    const addLecture = async (lectureData) => {
-        try {
-            // FIX 2: Correctly construct the full URL path: /teacher/lectures
-            const res = await fetch(`${API_URL}/teacher/lectures`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ ...lectureData, teacher_id: user.id }) });
-            const newLecture = await res.json();
-            if (!res.ok) throw new Error(newLecture.error || 'Failed to create lecture');
-            setLectures(prev => [{ ...newLecture, teacher_name: user.name }, ...prev]);
-            return newLecture;
-        } catch (error) {
-            // FIX 3: Change alert() to console.error
-            console.error(`Error: ${error.message}`);
-            return null;
-        }
-    };
-    
-    const markAttendance = async (lectureId) => {
-        if (!lectureId) {
-             // FIX 3: Change alert() to console.error
-             console.error("Invalid Lecture ID.");
-             return false;
-        }
-        try {
-            // FIX 2: Correctly construct the full URL path: /student/mark-attendance
-            const res = await fetch(`${API_URL}/student/mark-attendance`, { 
-                method: 'POST', 
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
-                body: JSON.stringify({ lectureId: lectureId, studentId: user.id }) 
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to mark attendance');
-            setAttendanceRecords(prev => [...prev, { id: data.newRecordId, lecture_id: parseInt(lectureId), student_id: user.id, status: 'present', timestamp: new Date().toISOString() }]);
-            return true;
-        } catch (error) {
-            // FIX 3: Change alert() to console.error
-            console.error(`Attendance Failed: ${error.message}`);
-            return false;
-        }
-    };
-
-    const handleSetActiveLecture = (lecture) => {
-        setActiveLecture(lecture);
-        if (lecture) {
-            setLectureNotification(lecture);
-            showNotification(lecture);
-        }
-    };
-    
-    const handleAttendFromNotification = (lecture) => {
-        if (lecture) {
-            setActiveLecture(lecture);
-            setView('scanQRCode'); // Go to the scanner page
-        }
-        setLectureNotification(null);
-    };
-
-    // --- RENDER LOGIC (CORRECTED) ---
-    const renderContent = () => {
-        if (isLoading) return <div className="flex justify-center items-center h-screen"><h1 className="text-2xl font-bold">Loading...</h1></div>;
-
-        if (user) {
-            switch (view) {
-                case 'teacherHome': return <TeacherDashboard user={user} setView={setView} lectures={lectures} activeLecture={activeLecture} setActiveLecture={handleSetActiveLecture} token={token} allStudents={registeredStudents} />;
-                // THIS IS THE FIX: Pass 'attendanceRecords' and 'allStudents' to the reports page
-                case 'reports': return <AttendanceReportsPage setView={setView} lectures={lectures} attendanceRecords={attendanceRecords} allStudents={registeredStudents} teacherId={user.id} token={token} />;
-                case 'createLecture': return <CreateLecturePage setView={setView} addLecture={addLecture} setActiveLecture={handleSetActiveLecture} />;
-                
-                case 'studentHome': return <StudentDashboard user={user} setView={setView} lectures={lectures} attendanceRecords={attendanceRecords} lectureNotification={lectureNotification} onAttendNow={handleAttendFromNotification} />;
-                case 'scanQRCode': return <ScanQRCodePage setView={setView} markAttendance={markAttendance} />;
-                case 'viewSchedule': return <ViewSchedulePage setView={setView} lectures={lectures} />;
-                
-                default: setView(user.role === 'teacher' ? 'teacherHome' : 'studentHome'); return null;
-            }
-        }
-        
-        switch (view) {
-            case 'teacherLogin': return <TeacherLoginPage setView={setView} onLogin={handleLogin} />;
-            case 'teacherRegister': return <TeacherRegisterPage setView={setView} onRegister={handleRegister} />;
-            case 'studentLogin': return <StudentLoginPage setView={setView} onLogin={handleLogin} />;
-            case 'studentRegister': return <StudentRegisterPage setView={setView} onRegister={handleRegister} />;
-            default: return <LandingPage setView={setView} />;
-        }
-    };
-
-    return (
-        <>
-            <Navbar user={user} setView={setView} onLogout={handleLogout} />
-            <div key={view} className="animate-fadeIn">
-                {renderContent()}
-            </div>
-        </>
-    );
-}
+    return (
+        <AuthPageWrapper setView={setView}>
+            <AuthFormContainer icon={<GraduationCapIcon className="w-8 h-8" />} title="Student Registration" subtitle="Create your account to get started">
+                    <form className="space-y-4" onSubmit={handleSubmit}>
+                        <InputField id="name" label="Full Name" type="text" placeholder="Enter your full name" icon={<UserIcon className="w-5 h-5"/>} value={formData.name} onChange={handleChange} />
+                        <InputField id="roll_number" label="Roll Number" type="text" placeholder="Enter your roll number" icon={<UserIcon className="w-5 h-5"/>} value={formData.roll_number} onChange={handleChange} />
+                        <InputField id="enrollment_number" label="Enrollment Number" type="text" placeholder="Enter your enrollment number" icon={<UserIcon className="w-5 h-5"/>} value={formData.enrollment_number} onChange={handleChange} />
+                        <InputField id="id" label="Student ID" type="text" placeholder="e.g., mit263" icon={<UserIcon className="w-5 h-5"/>} value={formData.id} onChange={handleChange} />
+                        <InputField id="email" label="Email" type="email" placeholder="Enter your email" icon={<MailIcon className="w-5 h-5"/>} value={formData.email} onChange={handleChange} />
+                        <InputField id="password" label="Password" type="password" placeholder="Create a password" icon={<LockIcon className="w-5 h-5"/>} value={formData.password} onChange={handleChange} />
+                        <button type="submit" className="w-full bg-[#052659] text-white font-bold py-3 px-4 rounded-lg hover:bg-[#021024] transition-colors">Create Account</button>
+                    </form>
+                    <p className="text-center text-slate-600 mt-6">Already have an account? <a href="#" onClick={(e) => {e.preventDefault(); setView('studentLogin')}} className="font-semibold text-[#052659] hover:underline">Sign in here</a></p>
+            </AuthFormContainer>
+        </AuthPageWrapper>
+    );
+};
